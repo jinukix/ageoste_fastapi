@@ -1,0 +1,25 @@
+{
+  "prerun": "# some code here",
+  "directory": "migrations",
+  "history": "migratehistory",
+  "models": [
+    "app.tables.user_table.ShopTable",
+    "app.tables.user_table.MembershipTable",
+    "app.tables.user_table.CouponTable",
+    "app.tables.user_table.UserTable",
+    "app.tables.user_table.UserCouponsTable",
+    "app.tables.product_table.MenuTable",
+    "app.tables.product_table.CategoryTable",
+    "app.tables.product_table.SizeTable",
+    "app.tables.product_table.ColorTable",
+    "app.tables.product_table.ImageTable",
+    "app.tables.product_table.ProductTable",
+    "app.tables.product_table.ProductSizeTable",
+    "app.tables.product_table.ProductColorImageTable",
+    "app.tables.product_table.ReviewTable",
+    "app.tables.product_table.Reply",
+    "app.tables.order_table.OrderStatusTable",
+    "app.tables.order_table.OrderTable",
+    "app.tables.order_table.CartTable"
+  ]
+}
