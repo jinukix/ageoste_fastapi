@@ -14,3 +14,12 @@ class SignUpUserRequestInfo(BaseModel):
 class AuthorizedUser(BaseModel):
     user_id: Optional[int] = None
 
+
+class ChangeUserRequestInfo(BaseModel):
+    email: Optional[str] = None
+    password: Optional[str] = None
+    name: Optional[str] = None
+    phone_number: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    address: Optional[str] = None
+    shop_id: Optional[int] = None

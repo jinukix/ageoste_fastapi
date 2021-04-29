@@ -1,5 +1,4 @@
 import bcrypt
-from datetime import datetime, timedelta
 from jose import jwt
 
 from peewee import *
@@ -7,18 +6,18 @@ from fastapi import APIRouter, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.exceptions import HTTPException
 
-from app.schemas.request.user_request import SignUpUserRequestInfo, AuthorizedUser
-from app.schemas.response.user_response import SignUpUserResponseInfo
-from app.tables.user_table import UserTable, CouponTable, UserCouponsTable, MembershipTable
+from app.schemas.request.user_request import SignUpUserRequestInfo, AuthorizedUser, ChangeUserRequestInfo
+from app.schemas.response.user_response import SignUpUserResponseInfo, AccessTokenResponseInfo, AccountResponseInfo, MembershipInfo, CouponsResponseInfo, CouponResponseInfo
+from app.tables.user_table import UserTable, CouponTable, UserCouponsTable, MembershipTable, ShopTable
 from app.token import get_current_user
-from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.config import SECRET_KEY, ALGORITHM
 
 
 router = APIRouter(tags=["user"], prefix="/user")
 
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED, response_model=SignUpUserResponseInfo)
-def signup(req: SignUpUserRequestInfo, current_user: AuthorizedUser = Depends(get_current_user)):
+def signup(req: SignUpUserRequestInfo):
     signup_coupon, _ = CouponTable.get_or_create(
         name="회원가입 쿠폰",
         discount_rate=30,
@@ -54,21 +53,108 @@ def signup(req: SignUpUserRequestInfo, current_user: AuthorizedUser = Depends(ge
     )
 
     new_user.save()
-    return new_user
+    return SignUpUserResponseInfo(
+        email=new_user.email,
+        name=new_user.name,
+        phone_number=new_user.phone_number,
+        date_of_birth=new_user.date_of_birth,
+        address=new_user.address
+    )
 
 
-@router.post("/login", status_code=status.HTTP_200_OK)
+@router.post("/login", status_code=status.HTTP_200_OK, response_model=AccessTokenResponseInfo)
 def login(req: OAuth2PasswordRequestForm = Depends()):
     try:
         user = UserTable.get(email=req.username)
 
+        if user.is_deleted:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Is Deleted User")
+
         if not bcrypt.checkpw(req.password.encode("utf-8"), user.password.encode('utf-8')):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Incorrect password")
 
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        to_encode = {"user_id": user.id, "exp": expire}
-        access_token = jwt.encode(to_encode, key=SECRET_KEY, algorithm=ALGORITHM)
+        access_token = jwt.encode({"user_id": user.id}, key=SECRET_KEY, algorithm=ALGORITHM)
 
-        return {"access_token": access_token, "token_type": "bearer"}
+        return AccessTokenResponseInfo(access_token=access_token)
     except DoesNotExist:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Credentials")
+
+
+@router.get("", status_code=status.HTTP_200_OK, response_model=AccountResponseInfo)
+def get_account(authorized: AuthorizedUser = Depends(get_current_user)):
+    user = UserTable.get(id=authorized.user_id)
+
+    if user.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Is Deleted User")
+
+    return AccountResponseInfo(
+        email=user.email,
+        name=user.name,
+        phone_number=user.phone_number,
+        date_of_birth=user.date_of_birth,
+        address=user.address,
+        membership=MembershipInfo(
+            grade=user.membership.grade,
+            discount_rate=user.membership.discount_rate
+        ),
+        favorite_shop=user.favorite_shop
+    )
+
+
+@router.put("", status_code=status.HTTP_200_OK, response_model=AccountResponseInfo)
+def change_account(req: ChangeUserRequestInfo, authorized: AuthorizedUser = Depends(get_current_user)):
+    user = UserTable.get(id=authorized.user_id)
+
+    if user.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Is Deleted User")
+
+    if req.email:
+        if UserTable.select().where(UserTable.email == req.email):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Exists Email")
+        user.email = req.email
+
+    if req.phone_number:
+        if UserTable.select().where(UserTable.phone_number == req.phone_number):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Exists Phone number")
+        user.phone_number = req.phone_number
+
+    if req.password:
+        user.password = bcrypt.hashpw(req.password.encode("utf-8"), bcrypt.gensalt()).decode()
+
+    if req.shop_id:
+        user.favorite_shop = ShopTable.get(id=req.shop_id)
+
+    if req.name:
+        user.name = req.name
+
+    if req.date_of_birth:
+        user.date_of_birth = req.date_of_birth
+
+    if req.address:
+        user.address = req.address
+
+    user.save()
+
+    return AccountResponseInfo(
+        email=user.email,
+        name=user.name,
+        phone_number=user.phone_number,
+        date_of_birth=user.date_of_birth,
+        address=user.address,
+        membership=MembershipInfo(
+            grade=user.membership.grade,
+            discount_rate=user.membership.discount_rate
+        ),
+        favorite_shop=user.favorite_shop
+    )
+
+
+@router.get("/coupon", status_code=status.HTTP_200_OK, response_model=CouponsResponseInfo)
+def get_coupons(authorized: AuthorizedUser = Depends(get_current_user)):
+    user = UserTable.get(id=authorized.user_id)
+    coupons = UserCouponsTable.select().where(UserCouponsTable.user == user)
+    coupons_response = [CouponResponseInfo.from_orm(coupon) for coupon in coupons]
+
+    return CouponsResponseInfo(
+        coupons=coupons_response
+    )

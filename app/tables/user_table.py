@@ -49,8 +49,8 @@ class UserTable(TimeStampModel):
 
 
 class UserCouponsTable(BaseModel):
-    user = ForeignKeyField(UserTable)
-    coupon = ForeignKeyField(CouponTable)
+    user = ForeignKeyField(UserTable, null=True)
+    coupon = ForeignKeyField(CouponTable, null=True)
 
     class Meta:
         db_table = "user_coupons"
