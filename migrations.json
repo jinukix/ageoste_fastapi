@@ -17,7 +17,7 @@
     "app.tables.product_table.ProductSizeTable",
     "app.tables.product_table.ProductColorImageTable",
     "app.tables.product_table.ReviewTable",
-    "app.tables.product_table.Reply",
+    "app.tables.product_table.ReplyTable",
     "app.tables.order_table.OrderStatusTable",
     "app.tables.order_table.OrderTable",
     "app.tables.order_table.CartTable"

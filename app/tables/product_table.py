@@ -84,7 +84,7 @@ class ReviewTable(TimeStampModel):
         db_table = 'reviews'
 
 
-class Reply(TimeStampModel):
+class ReplyTable(TimeStampModel):
     comment = CharField(max_length=1000)
 
     user = ForeignKeyField(UserTable, backref='replies', on_delete='CASCADE')

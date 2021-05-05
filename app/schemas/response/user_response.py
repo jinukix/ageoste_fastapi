@@ -2,14 +2,6 @@ from typing import List, Optional
 from app.config import ResponseModel
 
 
-class SignUpUserResponseInfo(ResponseModel):
-    email: str
-    name: Optional[str] = None
-    phone_number: Optional[str] = None
-    date_of_birth: Optional[str] = None
-    address: Optional[str] = None
-
-
 class AccessTokenResponseInfo(ResponseModel):
     access_token: str
     token_type: str = "bearer"
@@ -29,6 +21,7 @@ class ShopInfo(ResponseModel):
 
 
 class AccountResponseInfo(ResponseModel):
+    id: int
     email: str
     name: str
     phone_number: str
@@ -39,6 +32,7 @@ class AccountResponseInfo(ResponseModel):
 
 
 class CouponResponseInfo(ResponseModel):
+    id: int
     name: Optional[str] = None
     discount_rate: Optional[int] = None
     description: Optional[str] = None

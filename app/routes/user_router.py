@@ -5,9 +5,10 @@ from peewee import *
 from fastapi import APIRouter, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.exceptions import HTTPException
+from starlette.responses import Response
 
 from app.schemas.request.user_request import SignUpUserRequestInfo, AuthorizedUser, ChangeUserRequestInfo
-from app.schemas.response.user_response import SignUpUserResponseInfo, AccessTokenResponseInfo, AccountResponseInfo, MembershipInfo, CouponsResponseInfo, CouponResponseInfo
+from app.schemas.response.user_response import AccessTokenResponseInfo, AccountResponseInfo, MembershipInfo, CouponsResponseInfo, CouponResponseInfo
 from app.tables.user_table import UserTable, CouponTable, UserCouponsTable, MembershipTable, ShopTable
 from app.token import get_current_user
 from app.config import SECRET_KEY, ALGORITHM
@@ -16,7 +17,7 @@ from app.config import SECRET_KEY, ALGORITHM
 router = APIRouter(tags=["user"], prefix="/user")
 
 
-@router.post("/signup", status_code=status.HTTP_201_CREATED, response_model=SignUpUserResponseInfo)
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(req: SignUpUserRequestInfo):
     signup_coupon, _ = CouponTable.get_or_create(
         name="회원가입 쿠폰",
@@ -52,14 +53,7 @@ def signup(req: SignUpUserRequestInfo):
         coupon=signup_coupon
     )
 
-    new_user.save()
-    return SignUpUserResponseInfo(
-        email=new_user.email,
-        name=new_user.name,
-        phone_number=new_user.phone_number,
-        date_of_birth=new_user.date_of_birth,
-        address=new_user.address
-    )
+    return "created user"
 
 
 @router.post("/login", status_code=status.HTTP_200_OK, response_model=AccessTokenResponseInfo)
@@ -88,6 +82,7 @@ def get_account(authorized: AuthorizedUser = Depends(get_current_user)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Is Deleted User")
 
     return AccountResponseInfo(
+        id=user.id,
         email=user.email,
         name=user.name,
         phone_number=user.phone_number,
@@ -136,6 +131,7 @@ def change_account(req: ChangeUserRequestInfo, authorized: AuthorizedUser = Depe
     user.save()
 
     return AccountResponseInfo(
+        id=user.id,
         email=user.email,
         name=user.name,
         phone_number=user.phone_number,
