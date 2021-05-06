@@ -1,9 +1,5 @@
-from typing import List, Optional
+from typing import List
 from app.config import ResponseModel
-
-
-class ProductListResponseInfo(ResponseModel):
-    pass
 
 
 class ReviewResponseInfo(ResponseModel):
@@ -24,3 +20,22 @@ class ReplyResponseInfo(ResponseModel):
 
 class RepliesResponseInfo(ResponseModel):
     replies: List[ReplyResponseInfo]
+
+
+class ImageInfo(ResponseModel):
+    url: str
+
+
+class ProductResponseInfo(ResponseModel):
+    id: int
+    name: str
+    price: int
+    discount_rate: int
+    reviews_score_avg: int
+    thumbnail: ImageInfo
+    color_count: int
+
+
+class ProductsResponseInfo(ResponseModel):
+    products_count: int
+    products: List[ProductResponseInfo]

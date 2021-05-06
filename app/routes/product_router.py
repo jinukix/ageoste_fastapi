@@ -6,10 +6,11 @@ from fastapi.exceptions import HTTPException
 from playhouse.shortcuts import model_to_dict
 
 from app.schemas.request.user_request import AuthorizedUser
-from app.schemas.request.product_request import ProductsRequestInfo, ReviewRequestInfo
-from app.schemas.response.product_response import ProductListResponseInfo, ReviewResponseInfo, ReplyResponseInfo, \
-    RepliesResponseInfo
-from app.tables.product_table import ProductTable, ReviewTable, ImageTable, ReplyTable
+from app.schemas.request.product_request import ReviewRequestInfo
+from app.schemas.response.product_response import ReviewResponseInfo, ReplyResponseInfo, \
+    RepliesResponseInfo, ProductResponseInfo, ProductsResponseInfo, ImageInfo
+from app.tables.product_table import ProductTable, ReviewTable, ImageTable, ReplyTable, ProductColorImageTable, \
+    ColorTable
 from app.tables.user_table import UserTable
 from app.token import get_current_user
 
@@ -17,18 +18,72 @@ from app.token import get_current_user
 router = APIRouter(tags=["product"], prefix="/product")
 
 
-@router.get("/", status_code=status.HTTP_200_OK, response_model=ProductListResponseInfo)
+@router.get("/", status_code=status.HTTP_200_OK, response_model=ProductsResponseInfo)
 def get_products(
-        offset: int = 10,
+        offset: int = 0,
         limit: int = 10,
-        menu: Optional[str] = None,
         category: Optional[str] = None,
         colors: Optional[List[str]] = None,
         sizes: Optional[List[str]] = None,
         order_by: Optional[str] = 'id',
         search_by: Optional[str] = None,
 ):
-    # ProductTable.select().where().order_by(ProductsRequestInfo.order_by)
+
+    filter_set = {}
+
+    if category:
+        filter_set['category__name'] = category
+
+    if colors:
+        filter_set["productcolorimages__color__name__in"] = colors
+
+    if search_by:
+        filter_set['name__icontains'] = search_by
+
+    if sizes:
+        filter_set['sizes__name__in'] = sizes
+
+    if order_by == 'name':
+        order_by = ProductTable.name
+    elif order_by == '-name':
+        order_by = ProductTable.name.desc()
+    elif order_by == 'id':
+        order_by = ProductTable.id
+    elif order_by == '-id':
+        order_by = ProductTable.id.desc()
+    elif order_by == 'price':
+        order_by = ProductTable.price
+    elif order_by == '-price':
+        order_by = ProductTable.price.desc()
+
+    products = ProductTable.select().filter(**filter_set).order_by(order_by)
+
+    products_response = []
+    for product in products.prefetch(ProductColorImageTable, ImageTable, ColorTable, ReviewTable)[offset:limit]:
+        product.price = int(product.price)
+
+        result = ReviewTable\
+            .select(fn.AVG(ReviewTable.score).alias("reviews_score_avg"))\
+            .where(ReviewTable.product == product).group_by(ReviewTable.score)
+
+        product.reviews_score_avg = result[0].reviews_score_avg if result else 0
+
+        result = ProductColorImageTable.select(ProductColorImageTable).where(ProductColorImageTable.product == product).first()
+        product.thumbnail = ImageInfo(url=result.image.url)
+
+        result = ProductTable \
+            .select(fn.COUNT(ProductColorImageTable.color.distinct()).alias("color_count")) \
+            .join(ProductColorImageTable) \
+            .where(ProductColorImageTable.product == product) \
+            .group_by(ProductColorImageTable.color).first()
+
+        product.color_count = result.color_count
+        products_response.append(ProductResponseInfo.from_orm(product))
+
+    return ProductsResponseInfo(
+        products_count=products.count(),
+        products=products_response
+    )
 
 
 @router.post("/{product_id}/review/", status_code=status.HTTP_201_CREATED)

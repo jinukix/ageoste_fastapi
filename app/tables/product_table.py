@@ -64,7 +64,7 @@ class ProductSizeTable(BaseModel):
 
 
 class ProductColorImageTable(BaseModel):
-    product = ForeignKeyField(ProductTable, on_delete='CASCADE')
+    product = ForeignKeyField(ProductTable, backref='product_color_images', on_delete='CASCADE')
     color = ForeignKeyField(ColorTable, on_delete='CASCADE')
     image = ForeignKeyField(ImageTable, on_delete='CASCADE')
 
